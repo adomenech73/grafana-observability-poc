@@ -1,0 +1,59 @@
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  hosts:
+    - host: parca.localhost
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+
+
+config:
+  parca:
+    server:
+      http:
+        listen: ":80"
+      grpc:
+        listen: ":8090"
+    storage:
+      local:
+        path: /parca/storage
+    agent:
+      eBPF:
+        enabled: true
+        profilingInterval: 10s
+        profilingDuration: 10s
+
+volumes:
+  - name: parca-storage
+    persistentVolumeClaim:
+      claimName: parca-pvc
+
+volumeMounts:
+  - name: parca-storage
+    mountPath: /parca/storage
+
+resources:
+  requests:
+    memory: "2Gi"
+    cpu: "1"
+  limits:
+    memory: "4Gi"
+    cpu: "2"
+
+service:
+  type: ClusterIP
+  port: 80
+
+otel:
+  enabled: true
+  receiver:
+    otlp:
+      protocol: http
+      host: 0.0.0.0
+      port: 4317
+  exporter:
+    parca:
+      endpoint: http://parca-parca.observability.svc.cluster.local:80

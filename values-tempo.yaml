@@ -1,0 +1,30 @@
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  hosts:
+    - host: tempo.localhost
+      paths:
+        - path: /
+          pathType: Prefix
+
+config:
+  tempo:
+    tracing:
+      jaeger:
+        endpoint: http://jaeger-collector.observability.svc.cluster.local:14268/api/traces
+      otlp:
+        http:
+          endpoint: tempo.localhost:4317
+
+service:
+  type: ClusterIP
+  port: 3200
+
+resources:
+  requests:
+    memory: "2Gi"
+    cpu: "1"
+  limits:
+    memory: "4Gi"
+    cpu: "2"

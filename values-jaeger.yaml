@@ -1,0 +1,5 @@
+storage:
+  type: elasticsearch
+  elasticsearch:
+    host: elasticsearch-master.elastic-stack.svc.cluster.local
+    port: 9200

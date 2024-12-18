@@ -1,0 +1,15 @@
+server:
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: nginx
+    hosts:
+      - host: prometheus.localhost
+  persistentVolume:
+    enabled: false
+
+alertmanager:
+  enabled: true
+  persistentVolume:
+    enabled: false
+

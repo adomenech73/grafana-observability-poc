@@ -1,0 +1,20 @@
+elasticsearch:
+  host: elasticsearch-master.elastic-stack.svc.cluster.local
+  port: 9200
+  index: fluentbit-logs
+  type: _doc
+
+filters:
+  - type: parser
+    format: json
+    time_key: time
+    keep_time_key: true
+
+inputs:
+  - type: tail
+    tag: "kubernetes.*"
+    path: /var/log/containers/*.log
+    pos_file: /var/log/fluentd.pos
+    format: json
+    time_key: time
+    keep_time_key: true
