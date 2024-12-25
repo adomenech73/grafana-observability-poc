@@ -8,17 +8,16 @@ NORMAL=$(tput sgr0)  # Reset to normal
 # Define ANSI escape codes for red text
 REDC='\033[0;31m'
 NORMALC='\033[0m'
+
 # Versions
 VERSION_CERTMANAGER=v1.16.2
 VERSION_ELASTICSEARCH=7.17.3
 VERSION_KIBANA=7.17.3
 VERSION_FLUENTD=0.5.2
-VERSION_JAEGER=2.57.0
-VERSION_PROMETHEUS=26.0.0
+VERSION_PROMETHEUS=67.4.0
 VERSION_TEMPO=1.16.0
-VERSION_PARCA=4.19.0
-VERSION_OTEL_COLLECTOR=0.110.7
-VERSION_GRAFANA=8.6.4
+VERSION_PYROSCOPE=1.10.0
+VERSION_OPENTELEMETRY=0.75.1
 
 # Function to check if the local registry is already running
 check_registry_running() {
@@ -139,13 +138,13 @@ create_index_template() {
   local json_data=$2
 
   # Check if the index template already exists
-  if curl -s -o /dev/null -w "%{http_code}" -X HEAD "http://elasticsearch.localhost/_index_template/$template_name"; then
+  if curl -k -s -o /dev/null -w "%{http_code}" -X HEAD "https://elasticsearch.localhost/_index_template/$template_name"; then
     echo "Index template $template_name already exists."
     return 0
   fi
 
   echo "Creating index template: $template_name..."
-  response=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "http://elasticsearch.localhost/_index_template/$template_name" \
+  response=$(curl -k -s -o /dev/null -w "%{http_code}" -X PUT "https://elasticsearch.localhost/_index_template/$template_name" \
     -H "Content-Type: application/json" \
     -d "$json_data")
 
@@ -158,8 +157,14 @@ create_index_template() {
   fi
 }
 
-
 #-------------------------------------------------MAIN-------------------------------------------------------
+# Run a local Docker registry for OCI images if it doesn't exist
+if ! check_registry_running; then
+  echo "Starting local Docker registry..."
+  docker run -d -p 5000:5000 --restart=always --name local-registry registry:2
+else
+  echo "Local Docker registry is already running."
+fi
 
 # Install requirements
 echo "${BOLD}Installing requirements...${NORMAL}"
@@ -169,12 +174,11 @@ check_and_install_brew kind kubernetes-cli helm go k9s
 echo "${BOLD}Setting up Helm repositories...${NORMAL}"
 
 check_and_add_helm_repo jetstack https://charts.jetstack.io
+check_and_add_helm_repo minio-operator https://operator.min.io
 check_and_add_helm_repo elastic https://helm.elastic.co
 check_and_add_helm_repo fluent https://fluent.github.io/helm-charts
 check_and_add_helm_repo prometheus-community https://prometheus-community.github.io/helm-charts
 check_and_add_helm_repo grafana https://grafana.github.io/helm-charts
-check_and_add_helm_repo jaegertracing https://jaegertracing.github.io/helm-charts
-check_and_add_helm_repo parca https://parca-dev.github.io/helm-charts
 check_and_add_helm_repo open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
 
 # Update all Helm repositories once after adding them.
@@ -223,20 +227,22 @@ wait_for_resource deployment ingress-nginx-controller ingress-nginx available
 wait_for_resource job ingress-nginx-admission-create ingress-nginx complete
 wait_for_resource job ingress-nginx-admission-patch ingress-nginx complete
 
-# Install CertManager
-if ! check_for_resource deployment cert-manager-webhook cert-manager available; then
+# installation of CertManager
+if ! check_for_resource deployment cert-manager-webhook cert-manager; then
   echo "${BOLD}Installing CertManager...${NORMAL}"
   helm upgrade --install cert-manager jetstack/cert-manager \
     --namespace cert-manager \
     --create-namespace \
     --version "${VERSION_CERTMANAGER}" \
-    --set installCRDs=true \
+    -f values-certmanager.yaml \
     --kube-context kind-kind
 fi
+
 wait_for_resource deployment cert-manager cert-manager available
 wait_for_resource deployment cert-manager-cainjector cert-manager available
 wait_for_resource deployment cert-manager-webhook cert-manager available
 
+# Provision CertManager elements
 # Create self-signed ClusterIssuer
 if ! check_for_resource ClusterIssuer selfsigned-cluster-issuer cert-manager ready; then
   echo "${BOLD}Creating self-signed ClusterIssuer...${NORMAL}"
@@ -244,24 +250,12 @@ if ! check_for_resource ClusterIssuer selfsigned-cluster-issuer cert-manager rea
 fi
 wait_for_resource ClusterIssuer selfsigned-cluster-issuer cert-manager ready
 
-# Create Certificates
-if ! check_for_resource Certificate jaeger-certs observability ready; then
-  echo "${BOLD}Creating Certificates...${NORMAL}"
-  kubectl apply -f certificates.yaml --context kind-kind
-fi
-wait_for_resource Certificate elasticsearch-certs elastic-stack ready
-wait_for_resource Certificate kibana-certs elastic-stack ready
-wait_for_resource Certificate fluentd-certs logging ready
-wait_for_resource Certificate prometheus-certs monitoring ready
-wait_for_resource Certificate grafana-certs monitoring ready
-wait_for_resource Certificate jaeger-certs observability ready
-
 # Paralel installation of Elastic, Kibana and Fluentd
 if ! check_for_resource pod fluentd logging ready; then
   # Install Elasticsearch
   echo "${BOLD}Installing Elasticsearch...${NORMAL}"
   helm upgrade --install elasticsearch elastic/elasticsearch \
-    --namespace elastic-stack \
+    --namespace logging \
     --create-namespace \
     --version "${VERSION_ELASTICSEARCH}" \
     --values values-elasticsearch.yaml \
@@ -273,7 +267,7 @@ if ! check_for_resource pod fluentd logging ready; then
   # Install Kibana
   echo "${BOLD}Installing Kibana...${NORMAL}"
   helm upgrade --install kibana elastic/kibana \
-    --namespace elastic-stack \
+    --namespace logging \
     --create-namespace \
     --version "${VERSION_KIBANA}" \
     --values values-kibana.yaml \
@@ -300,10 +294,9 @@ if ! check_for_resource pod fluentd logging ready; then
   wait $fluentd_pid
 fi
 # Wait for Elasticsearch to be ready
-wait_for_resource pod elasticsearch-master-0 elastic-stack ready 1500
+wait_for_resource pod elasticsearch-master-0 logging ready 1500
 # Wait for Kibana to be available
-wait_for_resource deployment kibana-kibana elastic-stack available 1500
-
+wait_for_resource deployment kibana-kibana logging available 1500
 
 # Configure index patterns for Fluent Bit logs and Jaeger spans with validation.
 fluentbit_template='{
@@ -328,140 +321,80 @@ fluentbit_template='{
   }
 }'
 
-jaeger_template='{
-  "index_patterns": [
-    "jaeger-span-*"
-  ],
-  "template": {
-    "mappings": {
-      "dynamic": true,
-      "properties": {
-        "startTimeMillis": {
-          "type": "date"
-        }
-      }
-    }
-  }
-}'
-
 create_index_template fluentbit-logs-template "$fluentbit_template"
-create_index_template jaeger_template "$jaeger_template"
 
-# Install Jaeger Operator
-if ! check_for_resource deployment jaeger-operator observability available; then
-  echo "${BOLD}Installing Jaeger Operator...${NORMAL}"
-  helm upgrade --install jaeger-operator jaegertracing/jaeger-operator \
-    --namespace observability \
-    --create-namespace \
-    --version "${VERSION_JAEGER}" \
-    --values values-jaeger.yaml \
-    --kube-context kind-kind
-fi
-# Wait for jaeger-operator to be available
-wait_for_resource deployment jaeger-operator observability available
-
-# Create Jaeger instance and RBAC permits
-if ! check_for_resource deployment jaeger-query observability available; then
-  echo "${BOLD}Creating Jaeger instance and RBAC permits...${NORMAL}"
-  kubectl apply -f jaeger-operator-rbac.yaml --context kind-kind
-
-  # Wait for jaeger-operator-webhook-service to be available
-  #wait_for_resource service jaeger-operator-webhook-service observability available
-  sleep 5
-
-  kubectl apply -f jaeger-instance.yaml --context kind-kind
-  sleep 10
-fi
-wait_for_resource deployment jaeger-collector observability available
-wait_for_resource deployment jaeger-query observability available
-
-# Paralel Installation of Prometheus and Grafana
-if ! check_for_resource deployment grafana monitoring available; then
-  # Install Prometheus
-  echo "${BOLD}Installing Prometheus...${NORMAL}"
-  helm upgrade --install prometheus prometheus-community/prometheus \
-    --namespace monitoring \
-    --create-namespace \
-    --version "${VERSION_PROMETHEUS}" \
-    --values values-prometheus.yaml
-    --kube-context kind-kind &  # Run in the background
-
-  # Store the PID of the Promehteus installation
-  prometheus_pid=$!
-
+# Paralel Installation of Tempo and Parca
+if ! check_for_resource pod pyroscope-0 observability ready; then
   # Install Tempo
   echo "${BOLD}Installing Tempo...${NORMAL}"
   helm upgrade --install tempo grafana/tempo \
-    --namespace observability 
-    --create-namespace 
-    --version "${VERSION_TEMPO}"
-    --values values-tempo.yaml
+    --namespace observability \
+    --create-namespace \
+    --version "${VERSION_TEMPO}" \
+    --values values-tempo.yaml \
     --kube-context kind-kind &
 
   # Store the PID of the Tempo installation
   tempo_pid=$!
 
-  # Install Parca
-  echo "${BOLD}Installing Parca...${NORMAL}"
-  helm upgrade --install parca parca/parca \
+  # Install Pyroscope
+  echo "${BOLD}Installing Pyroscope...${NORMAL}"
+  helm upgrade --install pyroscope grafana/pyroscope \
     --namespace observability \
     --create-namespace \
-    --version ${VERSION_PARCA} \
-    --values values-parca.yaml \
+    --version ${VERSION_PYROSCOPE} \
+    --values values-pyroscope.yaml \
     --kube-context kind-kind &
 
     # Store the PID of the Tempo installation
-    parca_pid=$!
+    pyroscope_pid=$!
 
-  # Install OpenTelemetry Collector
-  echo "${BOLD}Installing OpenTelemetry Collector...${NORMAL}"
-  helm upgrade --install opentelemetry open-telemetry/opentelemetry-collector \
-    --namespace observability \
-    --create-namespace \
-    --version "${VERSION_OTEL_COLLECTOR}" \
-    --values values-otel-collector.yaml \
-    --kube-context kind-kind & # Run in the background
-
-  # Store the PID of the OpenTelemetry Collector installation
-  otel_collector_pid=$!
-
-  # Install Grafana
-  echo "${BOLD}Installing Grafana...${NORMAL}"
-  helm upgrade --install grafana grafana/grafana \
-    --namespace monitoring \
-    --create-namespace \
-    --version "${VERSION_GRAFANA}" \
-    --values values-grafana.yaml \
-    --kube-context kind-kind &  # Run in the background
-
-  # Store the PID of the Grafana installation
-  grafana_pid=$!
-
-  sleep 2
+  sleep 5
 
   # Wait for all installations to complete
-  wait $promehteus_pid
   wait $tempo_pid
-  wait $parca_pid
-  wait $otel_collector_pid
-  wait $grafana_pid
+  wait $pyroscope_pid
 fi
-# Wait for kube-state-metrics to be available
-wait_for_resource deployment prometheus-kube-state-metrics monitoring available
-# Wait for prometheus-pushgateway to be available
-wait_for_resource deployment prometheus-prometheus-pushgateway monitoring available
-# Wait for prometheus-server to be available
-wait_for_resource deployment prometheus-server monitoring available
-# Wait for AlertManager to be ready
-wait_for_resource pod prometheus-alertmanager-0 monitoring ready
 # wait for tempo to be available
 wait_for_resource pod tempo-0 observability ready
-# Wait for parca to be available
-wait_for_resource deployment parca observability available
-# Wait for OpenTelemetry Collector to be available
-wait_for_resource deployment opentelemetry-collector observability available
-# Wait for grafana to be available
-wait_for_resource deployment grafana monitoring available
+# Wait for pyroscope to be available
+wait_for_resource pod pyroscope-alloy-0 observability ready
+wait_for_resource pod pyroscope-0 observability ready
 
+# Installation of kube-prometheus-stack
+echo "${BOLD}Installing Prometheus Stack...${NORMAL}"
+helm upgrade --install prometheus-stack prometheus-community/kube-prometheus-stack \
+  --namespace monitoring \
+  --create-namespace \
+  --version "${VERSION_PROMETHEUS}" \
+  --values values-prometheus.yaml \
+  --kube-context kind-kind
+# Wait for prometheus-operator to be available
+wait_for_resource deployment prometheus-stack-kube-prom-operator monitoring available
+# Wait for kube-state-metrics to be available
+wait_for_resource deployment prometheus-stack-kube-state-metrics monitoring available
+# Wait for grafana to be available
+wait_for_resource deployment prometheus-stack-grafana monitoring available
+# Wait for AlertManager to be ready
+wait_for_resource pod alertmanager-prometheus-stack-kube-prom-alertmanager-0 monitoring ready
+# Wait for Prometheus operated to be ready
+wait_for_resource pod prometheus-prometheus-stack-kube-prom-prometheus-0 monitoring ready
+
+# Install OpenTelemetry Operator
+echo "${BOLD}Installing OpenTelemetry Operator...${NORMAL}"
+helm upgrade --install opentelemetry open-telemetry/opentelemetry-operator \
+  --namespace observability \
+  --create-namespace \
+  --version "${VERSION_OPENTELEMETRY}" \
+  --values values-opentelemetry.yaml \
+  --kube-context kind-kind
+
+# Wait for opentelemetry-operator to be available
+wait_for_resource deployment opentelemetry-opentelemetry-operator observability available
+
+if ! check_for_resource deployment opentelemetry-collector observability available; then
+  echo "${BOLD}Creating OpenTelemetry Collector...${NORMAL}"
+  kubectl apply -f otel-collector.yaml --context kind-kind
+fi
 
 echo "${BOLD}All components have been installed and configured successfully!${NORMAL}"

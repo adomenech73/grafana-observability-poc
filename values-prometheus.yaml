@@ -1,15 +1,77 @@
-server:
+env:
+  GF_INSTALL_PLUGINS: "grafana-pyroscope-app"
+  GF_AUTH_ANONYMOUS_ENABLED: "true"
+  GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+  GF_DIAGNOSTICS_PROFILING_ENABLED: "true"
+  GF_DIAGNOSTICS_PROFILING_ADDR: "0.0.0.0"
+  GF_DIAGNOSTICS_PROFILING_PORT: "9094"
+alertmanager:
+  enabled: true
   ingress:
     enabled: true
     annotations:
       kubernetes.io/ingress.class: nginx
+      kubernetes.io/tls-acme: "true"
+    ingressClassName: nginx
     hosts:
-      - host: prometheus.localhost
-  persistentVolume:
+      - alertmanager.localhost
+    tls:
+      - hosts:
+        - alertmanager.localhost
+        secretName: alertmanager-localhost-tls
+    alertmanagerSpec:
+      replicas: 1
+  persistence:
     enabled: false
-
-alertmanager:
+prometheus:
   enabled: true
-  persistentVolume:
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      kubernetes.io/tls-acme: "true"
+    ingressClassName: nginx
+    hosts:
+      - prometheus.localhost
+    tls:
+      - hosts:
+        - prometheus.localhost
+        secretName: prometheus-localhost-tls
+    prometheusSpec:
+      replicas: 1
+  persistence:
     enabled: false
-
+grafana:
+  enabled: true
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - grafana.localhost
+  persistence:
+    enabled: false
+  sidecar:
+    datasources:
+      enabled: true
+      defaultDatasourceEnabled: true
+      isDefaultDatasource: true
+      name: Prometheus
+      uid: prometheus
+      url: http://prometheus-server.monitoring.svc.cluster.local
+additionalDataSources:
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    url: http://tempo.observability.svc.cluster.local:3200
+    access: proxy
+    basicAuth: false
+    jsonData:
+      search:
+        maxSearchDuration: 1m
+        maxTraceDuration: 1h
+  - name: Pyroscope
+    type: pyroscope
+    uid: pyroscope
+    url: http://pyroscope.observability.svc.cluster.local:4040
+    jsonData:
+      minStep: '15s'

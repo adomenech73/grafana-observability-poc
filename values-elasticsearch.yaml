@@ -1,6 +1,5 @@
 # Permit co-located instances for solitary minikube virtual machines.
 antiAffinity: "soft"
-
 # ingress
 ingress:
   enabled: true
@@ -11,31 +10,30 @@ ingress:
           pathType: Prefix
   annotations:
     kubernetes.io/ingress.class: nginx
-
+    kubernetes.io/tls-acme: "true"
+  tls:
+    - hosts:
+      - elasticsearch.localhost
+      secretName: elasticsearch-localhost-tls
 # Adjust readiness probe
 readinessProbe:
   initialDelaySeconds: 60
   timeoutSeconds: 30
-
 # Single-node deployment for Kind
 replicas: 1
-
 # Disable persistent storage (Kind doesn't support persistent volumes by default)
 persistence:
   enabled: false
-
 # Configure JVM heap size (adjust based on available resources)
-esJavaOpts: "-Xms1024m -Xmx1024m"
-
+esJavaOpts: "-Xms1536m -Xmx1536m"
 # Minimal resource requests/limits for Kind
 resources:
   requests:
     memory: "3Gi"
     cpu: "1"
   limits:
-    memory: "4Gi"
+    memory: "3Gi"
     cpu: "2"
-
 xpack:
   security:
     enabled: false
@@ -45,7 +43,6 @@ xpack:
     enabled: false
   ml:
     enabled: false
-
 esConfig:
   elasticsearch.yml: |
     xpack.security.enabled: false
@@ -54,15 +51,12 @@ esConfig:
     xpack.watcher.enabled: false
     xpack.ml.enabled: false
     xpack.security.http.ssl.enabled: false
-
 extraEnvs:
   - name: DISABLE_SECURITY_PLUGIN
     value: "true"
-
 # Expose the service via a NodePort for local access
 service:
   type: NodePort
-
 # Request smaller persistent volumes.
 volumeClaimTemplate:
   accessModes: ["ReadWriteOnce"]

@@ -1,0 +1,6 @@
+crds:
+  enabled: true
+ingressShim:
+  defaultIssuerName: "selfsigned-cluster-issuer"
+  defaultIssuerKind: "ClusterIssuer"
+  defaultIssuerGroup: "cert-manager.io"

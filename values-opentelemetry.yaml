@@ -1,0 +1,13 @@
+# https://github.com/open-telemetry/opentelemetry-helm-charts/blob/main/charts/opentelemetry-collector/UPGRADING.md
+manager:
+  collectorImage:
+    repository: otel/opentelemetry-collector-k8s
+  autoInstrumentationImage:
+    java:
+      repository: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java
+      tag: 1.33.6
+admissionWebhooks:
+  certManager:
+    issuerRef:
+      kind: ClusterIssuer 
+      name: selfsigned-cluster-issuer

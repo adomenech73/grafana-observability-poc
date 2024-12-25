@@ -1,5 +1,5 @@
 elasticsearch:
-  host: elasticsearch-master.elastic-stack.svc.cluster.local
+  host: elasticsearch-master.logging.svc.cluster.local
   port: 9200
   index: fluentbit-logs
   type: _doc

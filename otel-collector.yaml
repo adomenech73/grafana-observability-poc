@@ -1,0 +1,31 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: my-collector
+  namespace: observability
+spec:
+  mode: deployment
+  config:
+    exporters:
+      otlp:
+        endpoint: ${env:MY_POD_IP}:4317
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: ${env:MY_POD_IP}:4317
+          http:
+            endpoint: ${env:MY_POD_IP}:4318
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: opentelemetry-collector
+              scrape_interval: 10s
+              static_configs:
+                - targets:
+                  - ${env:MY_POD_IP}:8888
+    service:
+      pipelines:
+        metrics:
+          exporters: [otlp]
+          receivers: [otlp, prometheus]
