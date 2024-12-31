@@ -5,7 +5,7 @@
 ## Create the environment: the lazy mode
 
 ```bash
-./setup.sh
+./setup_environment.sh
 ```
 
 After installation, you can access the following observability consoles:
