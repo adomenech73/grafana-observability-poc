@@ -6,9 +6,6 @@ metadata:
 spec:
   mode: deployment
   config:
-    exporters:
-      otlp:
-        endpoint: ${env:MY_POD_IP}:4317
     receivers:
       otlp:
         protocols:
@@ -16,16 +13,37 @@ spec:
             endpoint: ${env:MY_POD_IP}:4317
           http:
             endpoint: ${env:MY_POD_IP}:4318
-      prometheus:
-        config:
-          scrape_configs:
-            - job_name: opentelemetry-collector
-              scrape_interval: 10s
-              static_configs:
-                - targets:
-                  - ${env:MY_POD_IP}:8888
+    processors:
+      batch:
+    exporters:
+      logging:
+        loglevel: debug
+        prometheus:
+          endpoint: "0.0.0.0:8889"
+          const_labels:
+            labels: spring
+        otlp:
+          endpoint: tempo:4317
+          tls:
+            insecure: true
+          elasticsearch:
+            endpoint: "elasticsearch.logging.svc.cluster.local"
+    extensions:
+      health_check:
+      pprof:
+      zpages:
     service:
+      extensions: [health_check, pprof, zpages]
       pipelines:
         metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [prometheus]
+        traces:
+          receivers: [otlp]
+          processors: [batch]
           exporters: [otlp]
-          receivers: [otlp, prometheus]
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [elasticsearch]
