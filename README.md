@@ -1,5 +1,7 @@
 # OpenTelemetry POC
 
+![Components diagram](diagram.png)
+
 ## Create the environment: the lazy mode
 
 ```bash
@@ -239,6 +241,11 @@ export REPOSITORY_PREFIX=localhost:5000
 export VERSION=3.2.7
 ./scripts/tagImages.sh
 ./scripts/pushImages.sh
+```
+
+```bash
+git remote add petclinicfork https://github.com/adomenech73/spring-petclinic-microservices 
+git push petclinicfork otel-poc
 ```
 
 ## Clean-up
