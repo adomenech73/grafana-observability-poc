@@ -13,27 +13,41 @@ tempoQuery:
     - hosts:
       - tempo.localhost
       secretName: tempo-localhost-tls
-# tempo:
-#   receivers:
-#     jaeger:
-#       protocols:
-#         thrift_http:
-#           endpoint: http://jaeger-collector.observability.svc.cluster.local:14268/api/traces
-#     otlp:
-#       protocols:
-#         http:
-#           endpoint: tempo.localhost:4317
-
-# service:
-#   type: ClusterIP
-#   port: 3200
-#   targetPort: 3200
-#   protocol: TCP
-
-# resources:
-#   requests:
-#     memory: "2Gi"
-#     cpu: "1"
-#   limits:
-#     memory: "4Gi"
-#     cpu: "2"
+tempo:
+  server:
+    http_listen_port: 3200
+  distributor:
+    receivers:                           # this configuration will listen on all ports and protocols that tempo is capable of.
+      otlp:
+        protocols:
+          http:
+          grpc:
+  ingester:
+    max_block_duration: 5m               # cut the headblock when this much time passes.
+                                        # this is being set for demo purposes and should probably be left alone normally
+  compactor:
+    compaction:
+      block_retention: 1h                # overall Tempo trace retention. set for demo purposes
+  metrics_generator:
+    registry:
+      external_labels:
+        source: tempo
+        cluster: docker-compose
+    storage:
+      path: /tmp/tempo/generator/wal
+  storage:
+    trace:
+      backend: local                     # backend configuration to use
+      wal:
+        path: /tmp/tempo/wal             # where to store the the wal locally
+      local:
+        path: /tmp/tempo/blocks
+  overrides:
+    metrics_generator_processors: [service-graphs, span-metrics] # enables metrics generator
+resources:
+  requests:
+    memory: "2Gi"
+    cpu: "1"
+  limits:
+    memory: "4Gi"
+    cpu: "2"
