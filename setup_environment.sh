@@ -70,19 +70,6 @@ check_and_add_helm_repo() {
     fi
 }
 
-# Set up a local OCI registry:
-if ! check_registry_running; then
-  echo "${BOLD}Seting-up local OCI registry...${NORMAL}"
-  docker run -d -p 5000:5000 --name local-registry registry:2
-fi
-
-if check_registry_health; then
-    echo "Registry setup successful"
-else
-    echo "${REDC}Registry setup failed${NORMALC}"
-    exit 1
-fi
-
 # Function to check if a Kind cluster exists
 check_kind_cluster() {
   local cluster_name=$1
