@@ -39,6 +39,12 @@ prometheus:
         secretName: prometheus-localhost-tls
     prometheusSpec:
       replicas: 1
+      scrapeInterval: 10s
+      evaluationInterval: 10s
+      additionalScrapeConfigs:
+        - job_name: 'otel-collector'
+          static_configs:
+            - targets: ['otel-collector.observability.svc.cluster.local:8889']
   persistence:
     enabled: false
 grafana:
