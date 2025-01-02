@@ -15,7 +15,7 @@ tempoQuery:
       secretName: tempo-localhost-tls
 tempo:
   server:
-    http_listen_port: 3200
+    http_listen_port: 3100
   distributor:
     receivers:                           # this configuration will listen on all ports and protocols that tempo is capable of.
       otlp:
@@ -32,7 +32,7 @@ tempo:
     registry:
       external_labels:
         source: tempo
-        cluster: docker-compose
+        cluster: kind-kind
     storage:
       path: /tmp/tempo/generator/wal
   storage:
@@ -42,8 +42,8 @@ tempo:
         path: /tmp/tempo/wal             # where to store the the wal locally
       local:
         path: /tmp/tempo/blocks
-  overrides:
-    metrics_generator_processors: [service-graphs, span-metrics] # enables metrics generator
+  # overrides:
+  #   metrics_generator_processors: [service-graphs, span-metrics] # enables metrics generator
 resources:
   requests:
     memory: "2Gi"
