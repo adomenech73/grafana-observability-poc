@@ -23,7 +23,7 @@ spec:
           const_labels:
             labels: spring
         otlp:
-          endpoint: tempo:4317
+          endpoint: tempo.observability.svc.cluster.local:4317
           tls:
             insecure: true
           elasticsearch:
