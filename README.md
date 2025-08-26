@@ -271,3 +271,69 @@ git push petclinicfork otel-poc
 ```bash
 kind delete cluster
 ```
+
+## Submodule Maintenance Guide
+
+### Overview
+
+This repository uses a submodule (`spring-petclinic-microservices`) that contains a forked version of the Spring Petclinic microservices with custom OpenTelemetry instrumentation on the otel-poc branch.
+
+### Maintenance Script
+
+#### Purpose
+
+The `update_petclinic_submodule.sh` script automates the process of:
+
+1. Keeping your feature branch synchronized with upstream changes
+2. Rebasing your custom changes onto the latest upstream code
+3. Updating the main repository reference
+4. Maintaining a clean commit history
+
+#### Usage
+
+```bash
+# Make the script executable
+chmod +x update_petclinic_submodule.sh
+
+# Run the maintenance script
+./update_petclinic_submodule.sh
+```
+
+#### What the script does:
+
+1. **Safety Checks:** Ensures no uncommitted changes exist in either repository
+2. **Synchronization:** Fetches latest changes from both upstream and your fork
+3. **Rebasing:** Applies your changes on top of the latest upstream code
+4. **Conflict Handling:** Provides guidance if manual conflict resolution is needed
+5. **Reference Update:** Updates the main repository to point to the new submodule commit
+
+#### Prerequisites
+
+- The submodule must be initialized: `git submodule update --init --recursive`
+- Your fork remote must be configured as `petclinicfork`
+- The upstream remote must be configured as `origin`
+
+#### Best Practices
+
+1. **Run regularly:** Execute this script weekly to stay synchronized with upstream
+2. **Test after update:** Always run tests after rebasing: `./mvnw clean install -P buildDocker`
+3. **Resolve conflicts promptly:** Address merge conflicts immediately when they occur
+4. **Backup first:** Consider branching your main repository before running the script
+
+#### Manual Steps (if script fails)
+
+If the script encounters conflicts:
+
+```bash
+cd spring-petclinic-microservices
+# Resolve conflicts manually, then:
+git add <resolved-files>
+git rebase --continue
+git push petclinicfork otel-poc --force-with-lease
+cd ..
+git add spring-petclinic-microservices
+git commit -m "Update submodule after conflict resolution"
+git push origin main
+```
+
+This script ensures your OpenTelemetry instrumentation remains compatible with upstream changes while maintaining a clean development history.
