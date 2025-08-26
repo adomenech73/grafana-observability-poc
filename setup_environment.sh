@@ -32,7 +32,7 @@ check_registry_running() {
 check_registry_health() {
     local max_retries=30
     local count=0
-    while ! curl -s http://localhost:5000/v2/ > /dev/null
+    while ! curl -s http://localhost:5001/v2/ > /dev/null
     do
         sleep 1
         count=$((count+1))
@@ -148,7 +148,7 @@ create_index_template() {
 # Run a local Docker registry for OCI images if it doesn't exist
 if ! check_registry_running; then
   echo "Starting local Docker registry..."
-  docker run -d -p 5000:5000 --restart=always --name local-registry registry:2
+  docker run -d -p 5001:5000 --restart=always --name local-registry registry:2
 else
   echo "Local Docker registry is already running."
 fi
@@ -173,6 +173,9 @@ echo "${BOLD}Updating Helm repositories...${NORMAL}"
 helm repo update
 
 # Create Kind cluster
+# podman specific settings
+export KIND_EXPERIMENTAL_PROVIDER=podman
+# export PODMAN_OPTS="--network=bridge --dns=8.8.8.8"
 echo "${BOLD}Creating Kind cluster...${NORMAL}"
 if ! check_kind_cluster "kind"; then
   kind create cluster --config kind-config.yaml
@@ -209,10 +212,16 @@ echo "${BOLD}Now you can monitor the Kind cluster using k9s.${NORMAL}"
 if ! check_for_resource job ingress-nginx-admission-patch ingress-nginx complete; then
   echo "${BOLD}Installing NGINX ingress controller...${NORMAL}"
   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/kind/deploy.yaml --context kind-kind
+  # patch ingnx-ingress controller to work with podman
+  # Patch the ingress controller to run on control-plane node
+  kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type=strategic --patch='{"spec":{"template":{"spec":{"hostNetwork":true,"dnsPolicy":"ClusterFirstWithHostNet","nodeSelector":{"ingress-ready":"true"},"tolerations":[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists","effect":"NoSchedule"}]}}}}' --context kind-kind
+  # Restart the controller
+  kubectl rollout restart deployment/ingress-nginx-controller -n ingress-nginx --context kind-kind
 fi
 wait_for_resource deployment ingress-nginx-controller ingress-nginx available
 wait_for_resource job ingress-nginx-admission-create ingress-nginx complete
-wait_for_resource job ingress-nginx-admission-patch ingress-nginx complete
+# wait_for_resource job ingress-nginx-admission-patch ingress-nginx complete
+
 
 # installation of CertManager
 if ! check_for_resource deployment cert-manager-webhook cert-manager; then
@@ -308,7 +317,7 @@ fluentbit_template='{
   }
 }'
 
-create_index_template fluentbit-logs-template "$fluentbit_template"
+# create_index_template fluentbit-logs-template "$fluentbit_template"
 
 # Paralel Installation of Tempo and Parca
 if ! check_for_resource pod pyroscope-0 observability ready; then
