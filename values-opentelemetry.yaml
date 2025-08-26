@@ -1,13 +1,14 @@
-# https://github.com/open-telemetry/opentelemetry-helm-charts/blob/main/charts/opentelemetry-collector/UPGRADING.md
+# values.yaml
 manager:
   collectorImage:
-    repository: otel/opentelemetry-collector-k8s
+    repository: otel/opentelemetry-collector-contrib # This is correct now
   autoInstrumentationImage:
     java:
       repository: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java
       tag: 1.33.6
+
 admissionWebhooks:
   certManager:
     issuerRef:
-      kind: ClusterIssuer 
+      kind: ClusterIssuer
       name: selfsigned-cluster-issuer

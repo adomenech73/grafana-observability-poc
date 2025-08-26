@@ -10,40 +10,44 @@ spec:
       otlp:
         protocols:
           grpc:
-            endpoint: ${env:MY_POD_IP}:4317
+            # FIX 2: Use '0.0.0.0' to bind to all interfaces instead of relying on MY_POD_IP
+            endpoint: "0.0.0.0:4317"
           http:
-            endpoint: ${env:MY_POD_IP}:4318
+            # FIX 2: Use '0.0.0.0' to bind to all interfaces instead of relying on MY_POD_IP
+            endpoint: "0.0.0.0:4318"
     processors:
       batch:
+        timeout: 1s
+        send_batch_size: 1024
     exporters:
-      logging:
-        loglevel: debug
-        prometheus:
-          endpoint: "0.0.0.0:8889"
-          const_labels:
-            labels: spring
-        otlp:
-          endpoint: tempo.observability.svc.cluster.local:4317
-          tls:
-            insecure: true
-          elasticsearch:
-            endpoint: "elasticsearch.logging.svc.cluster.local"
+      debug:
+        verbosity: detailed
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+        const_labels:
+          labels: spring
+      otlp:
+        endpoint: "tempo.observability.svc.cluster.local:4317"
+        tls:
+          insecure: true
+      elasticsearch:
+        endpoints: ["http://elasticsearch.logging.svc.cluster.local:9200"]
+        logs_index: "app-logs" # Direct string value
     extensions:
       health_check:
-      pprof:
-      zpages:
+        endpoint: 0.0.0.0:13133
     service:
-      extensions: [health_check, pprof, zpages]
+      extensions: [health_check] # Now this reference is valid
       pipelines:
         metrics:
           receivers: [otlp]
           processors: [batch]
-          exporters: [prometheus]
+          exporters: [prometheus, debug]
         traces:
           receivers: [otlp]
           processors: [batch]
-          exporters: [otlp]
+          exporters: [otlp, debug]
         logs:
           receivers: [otlp]
           processors: [batch]
-          exporters: [elasticsearch]
+          exporters: [elasticsearch, debug]
