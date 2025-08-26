@@ -1,5 +1,8 @@
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  apiServerAddress: "0.0.0.0" # Critical for Podman compatibility
+  apiServerPort: 6443
 nodes:
   - role: control-plane
     kubeadmConfigPatches:
@@ -12,7 +15,14 @@ nodes:
       - containerPort: 80
         hostPort: 80
         protocol: TCP
+        listenAddress: "0.0.0.0" # Essential for Podman
       - containerPort: 443
         hostPort: 443
         protocol: TCP
+        listenAddress: "0.0.0.0" # Essential for Podman
+      # Add these for better debugging
+      - containerPort: 6443
+        hostPort: 6443
+        protocol: TCP
+        listenAddress: "0.0.0.0"
   - role: worker
