@@ -1,13 +1,7 @@
 #!/bin/bash
 
-# Create kind cluster if not exists
-if ! kind get clusters | grep -q "petclinic-kind"; then
-    echo "Creating kind cluster..."
-    kind create cluster --name petclinic-kind --config kind-config.yaml
-fi
-
 # Set context
-kubectl config use-context kind-petclinic-kind
+kubectl config use-context kind-kind
 
 # Create namespace
 kubectl create namespace spring-petclinic --dry-run=client -o yaml | kubectl apply -f -
