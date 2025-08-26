@@ -9,6 +9,7 @@
 ```
 
 After installation, you can access the following observability consoles:
+
 - Elasticsearch: https://elasticsearch.localhost/
 - Kibana: https://kibana.localhost/
 - Grafana: https://grafana.localhost/
@@ -20,6 +21,22 @@ To monitor the Kind cluster:
 
 ```bash
 k9s --context kind-kind
+```
+
+## Requirement Podman
+
+```bash
+podman machine stop
+podman machine set --rootful
+podman machine rm -f
+
+podman machine init \
+  --cpus 4 \
+  --memory 8192 \
+  --disk-size 50 \
+  --rootful
+
+podman machine start
 ```
 
 ## Create the environment: Step-by-Step mode
@@ -191,7 +208,6 @@ helm upgrade --install pyroscope grafana/pyroscope \
   --kube-context kind-kind
 ```
 
-
 #### Install Prometheus, Alertmanager & Grafana (Metrics storage, alerting & visualization)
 
 - [Prometheus Stack](https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack)
@@ -232,19 +248,21 @@ Create OpenTelemetry Collector:
 kubectl apply -f otel-collector.yaml --context kind-kind
 ```
 
-### Deploy example test services
+## Deploy example test services
 
 ```bash
 cd spring-petclinic-microservices/
-./mvnw clean install -P buildDocker
-export REPOSITORY_PREFIX=localhost:5000
+git submodule update --remote --recursive
+./mvnw -s .mvn/settings.xml clean install -P buildDocker
+export REPOSITORY_PREFIX=localhost:5001
 export VERSION=3.2.7
-./scripts/tagImages.sh
+export PODMAN_OPTS="--tls-verify=false"
+./scripts/retag-and-push-images.sh
 ./scripts/pushImages.sh
 ```
 
 ```bash
-git remote add petclinicfork https://github.com/adomenech73/spring-petclinic-microservices 
+git remote add petclinicfork https://github.com/adomenech73/spring-petclinic-microservices
 git push petclinicfork otel-poc
 ```
 
