@@ -252,10 +252,9 @@ kubectl apply -f otel-collector.yaml --context kind-kind
 
 ```bash
 cd spring-petclinic-microservices/
-git submodule update --remote --recursive
 ./mvnw -s .mvn/settings.xml clean install -P buildDocker
 export REPOSITORY_PREFIX=localhost:5001
-export VERSION=3.2.7
+export VERSION=3.4.1
 export PODMAN_OPTS="--tls-verify=false"
 ./scripts/retag-and-push-images.sh
 ./scripts/pushImages.sh
