@@ -1,0 +1,6 @@
+apiVersion: v2
+name: admin-server
+description: Spring Boot Admin Server for PetClinic
+type: application
+version: 0.1.0
+appVersion: 2.6.0

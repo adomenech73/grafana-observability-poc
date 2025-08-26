@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-server-config
+data:
+  application.yml: |
+    server:
+      port: 8888
+    spring:
+      cloud:
+        config:
+          server:
+            git:
+              uri: https://github.com/spring-petclinic/spring-petclinic-microservices-config
+              default-label: main
+              timeout: 10
+              clone-on-start: true
+      profiles:
+        active: native,git
+  application-kubernetes.yml: |
+    eureka:
+      client:
+        serviceUrl:
+          defaultZone: http://discovery-server:8761/eureka/
+    spring:
+      cloud:
+        config:
+          discovery:
+            enabled: true
+            service-id: discovery-server

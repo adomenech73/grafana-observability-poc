@@ -1,0 +1,39 @@
+service:
+  enabled: true
+  name: api-gateway
+  port: 8080
+  type: NodePort
+  nodePort: 30080
+
+deployment:
+  replicaCount: 1
+  image: springcommunity/spring-petclinic-microservices-api-gateway:latest
+  imagePullPolicy: IfNotPresent
+  javaOpts: ""
+  logLevel: "INFO"
+  env:
+    SPRING_PROFILES_ACTIVE: "kubernetes"
+    EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://discovery-server:8761/eureka/"
+    SPRING_CLOUD_CONFIG_URI: "http://config-server:8888"
+
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "250m"
+  limits:
+    memory: "1024Mi"
+    cpu: "500m"
+
+probes:
+  liveness:
+    path: /actuator/health
+    initialDelaySeconds: 120
+    periodSeconds: 10
+  readiness:
+    path: /actuator/health
+    initialDelaySeconds: 40
+    periodSeconds: 5
+  startup:
+    path: /actuator/health
+    failureThreshold: 30
+    periodSeconds: 10

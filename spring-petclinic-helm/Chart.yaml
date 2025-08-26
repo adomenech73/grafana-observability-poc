@@ -1,0 +1,34 @@
+apiVersion: v2
+name: spring-petclinic
+description: Spring PetClinic Microservices - Umbrella Chart
+version: 0.1.0
+appVersion: 2.6.0
+dependencies:
+  - name: config-server
+    version: 0.1.0
+    repository: file://./charts/config-server
+    condition: config-server.enabled
+  - name: discovery-server
+    version: 0.1.0
+    repository: file://./charts/discovery-server
+    condition: discovery-server.enabled
+  - name: api-gateway
+    version: 0.1.0
+    repository: file://./charts/api-gateway
+    condition: api-gateway.enabled
+  - name: admin-server
+    version: 0.1.0
+    repository: file://./charts/admin-server
+    condition: admin-server.enabled
+  - name: customers-service
+    version: 0.1.0
+    repository: file://./charts/common-service
+    condition: customers-service.enabled
+  - name: vets-service
+    version: 0.1.0
+    repository: file://./charts/common-service
+    condition: vets-service.enabled
+  - name: visits-service
+    version: 0.1.0
+    repository: file://./charts/common-service
+    condition: visits-service.enabled

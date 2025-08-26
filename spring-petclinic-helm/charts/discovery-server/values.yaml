@@ -1,0 +1,37 @@
+service:
+  enabled: true
+  name: discovery-server
+  port: 8761
+  type: ClusterIP
+
+deployment:
+  replicaCount: 1
+  image: springcommunity/spring-petclinic-microservices-discovery-server:latest
+  imagePullPolicy: IfNotPresent
+  javaOpts: ""
+  logLevel: "INFO"
+  env:
+    SPRING_PROFILES_ACTIVE: "kubernetes"
+    SPRING_CLOUD_CONFIG_URI: "http://config-server:8888"
+
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "250m"
+  limits:
+    memory: "1024Mi"
+    cpu: "500m"
+
+probes:
+  liveness:
+    path: /actuator/health
+    initialDelaySeconds: 90
+    periodSeconds: 10
+  readiness:
+    path: /actuator/health
+    initialDelaySeconds: 40
+    periodSeconds: 5
+  startup:
+    path: /actuator/health
+    failureThreshold: 25
+    periodSeconds: 10

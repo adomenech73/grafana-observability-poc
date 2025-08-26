@@ -1,0 +1,23 @@
+{{- if .Values.config-server.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: wait-for-config-server
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    spec:
+      containers:
+      - name: wait
+        image: busybox:1.35
+        command: ['sh', '-c',
+          'until nc -z config-server {{ .Values.config-server.port }}; do
+            echo "Waiting for config-server...";
+            sleep 2;
+           done;
+           echo "Config server is ready!"']
+      restartPolicy: OnFailure
+{{- end }}

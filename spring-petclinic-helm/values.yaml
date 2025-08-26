@@ -1,0 +1,118 @@
+global:
+  namespace: spring-petclinic
+  imagePullPolicy: IfNotPresent
+  javaOpts: "-Xmx512m -Xms256m"
+  logLevel: INFO
+
+  # Kind-specific settings
+  kind:
+    useHostPorts: false
+    nodePorts:
+      apiGateway: 30080
+      adminServer: 30081
+
+# Config Server
+config-server:
+  enabled: true
+  replicaCount: 1
+  image: localhost:5001/spring-petclinic-microservices-config-server:3.2.7
+  port: 8888
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1024Mi"
+      cpu: "500m"
+
+# Discovery Server
+discovery-server:
+  enabled: true
+  replicaCount: 1
+  image: localhost:5001/spring-petclinic-microservices-discovery-server:3.2.7
+  port: 8761
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1024Mi"
+      cpu: "500m"
+
+# API Gateway
+api-gateway:
+  enabled: true
+  replicaCount: 1
+  image: localhost:5001/spring-petclinic-microservices-api-gateway:3.2.7
+  port: 8080
+  serviceType: NodePort
+  nodePort: 30080
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1024Mi"
+      cpu: "500m"
+
+# Admin Server
+admin-server:
+  enabled: true
+  replicaCount: 1
+  image: localhost:5001/spring-petclinic-microservices-admin-server:3.2.7
+  port: 9090
+  serviceType: NodePort
+  nodePort: 30081
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1024Mi"
+      cpu: "500m"
+
+# Business Services
+customers-service:
+  enabled: true
+  replicaCount: 1
+  image: localhost:5001/spring-petclinic-microservices-customers-service:3.2.7
+  port: 8081
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1024Mi"
+      cpu: "500m"
+
+vets-service:
+  enabled: true
+  replicaCount: 1
+  image: localhost:5001/spring-petclinic-microservices-vets-service:3.2.7
+  port: 8082
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1024Mi"
+      cpu: "500m"
+
+visits-service:
+  enabled: true
+  replicaCount: 1
+  image: localhost:5001/spring-petclinic-microservices-visits-service:3.2.7
+  port: 8083
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1024Mi"
+      cpu: "500m"
+
+# Dependency management
+dependencies:
+  configServerStartupTimeout: 120
+  discoveryServerStartupTimeout: 120
+  serviceStartupTimeout: 180
