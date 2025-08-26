@@ -15,7 +15,7 @@ global:
 config-server:
   enabled: true
   replicaCount: 1
-  image: localhost:5001/spring-petclinic-microservices-config-server:3.2.7
+  image: localhost:5001/spring-petclinic-microservices-config-server:3.4.1
   port: 8888
   resources:
     requests:
@@ -29,7 +29,7 @@ config-server:
 discovery-server:
   enabled: true
   replicaCount: 1
-  image: localhost:5001/spring-petclinic-microservices-discovery-server:3.2.7
+  image: localhost:5001/spring-petclinic-microservices-discovery-server:3.4.1
   port: 8761
   resources:
     requests:
@@ -43,7 +43,7 @@ discovery-server:
 api-gateway:
   enabled: true
   replicaCount: 1
-  image: localhost:5001/spring-petclinic-microservices-api-gateway:3.2.7
+  image: localhost:5001/spring-petclinic-microservices-api-gateway:3.4.1
   port: 8080
   serviceType: NodePort
   nodePort: 30080
@@ -59,7 +59,7 @@ api-gateway:
 admin-server:
   enabled: true
   replicaCount: 1
-  image: localhost:5001/spring-petclinic-microservices-admin-server:3.2.7
+  image: localhost:5001/spring-petclinic-microservices-admin-server:3.4.1
   port: 9090
   serviceType: NodePort
   nodePort: 30081
@@ -75,7 +75,7 @@ admin-server:
 customers-service:
   enabled: true
   replicaCount: 1
-  image: localhost:5001/spring-petclinic-microservices-customers-service:3.2.7
+  image: localhost:5001/spring-petclinic-microservices-customers-service:3.4.1
   port: 8081
   resources:
     requests:
@@ -88,7 +88,7 @@ customers-service:
 vets-service:
   enabled: true
   replicaCount: 1
-  image: localhost:5001/spring-petclinic-microservices-vets-service:3.2.7
+  image: localhost:5001/spring-petclinic-microservices-vets-service:3.4.1
   port: 8082
   resources:
     requests:
@@ -101,7 +101,7 @@ vets-service:
 visits-service:
   enabled: true
   replicaCount: 1
-  image: localhost:5001/spring-petclinic-microservices-visits-service:3.2.7
+  image: localhost:5001/spring-petclinic-microservices-visits-service:3.4.1
   port: 8083
   resources:
     requests:
